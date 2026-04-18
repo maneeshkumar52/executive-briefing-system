@@ -1,132 +1,144 @@
 # Executive Briefing System
 
-Professional-grade executive intelligence briefing system designed for production-style development with clear service boundaries, repeatable setup, and deterministic execution steps.
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## 1. Executive Overview
+AI-powered executive decision intelligence system for multi-source analysis, specialist synthesis, and decision-ready briefings — with 6 data source connectors, 5 specialist analysts, compliance gating, and async background processing.
 
-This repository provides:
-- A FastAPI service entrypoint for API-first integration
-- Structured modules for orchestration, domain logic, and integrations
-- Test scaffolding for incremental quality assurance
-- Environment-driven configuration for local, staging, and production workflows
+## Architecture
 
-## 2. Architecture
-
-### 2.1 Logical Architecture
-
-```txt
-Client / Integrator
-      |
-      v
-FastAPI API Layer (Uvicorn)
-      |
-      +--> Application Layer (routing, orchestration)
-      +--> Domain Layer (business rules)
-      +--> Integration Layer (Azure/OpenAI/search/messaging)
-      +--> Data/State Layer (configured adapters)
+```
+Briefing Request
+        │
+        ▼
+┌─────────────────────────────────────────────┐
+│  FastAPI Service (:8000)                    │
+│                                             │
+│  BriefingPipeline (orchestrator)            │
+│       │                                     │
+│  Data Sources (parallel fetch):             │
+│       ├──► FinancialConnector              │
+│       ├──► MarketConnector                 │
+│       ├──► NewsConnector                   │
+│       ├──► HRConnector                     │
+│       ├──► OpsConnector                    │
+│       └──► CustomerConnector               │
+│       │                                     │
+│  Specialists (parallel analysis):           │
+│       ├──► FinancialSpecialist             │
+│       ├──► MarketSpecialist                │
+│       ├──► OperationsSpecialist            │
+│       ├──► PeopleSpecialist                │
+│       └──► RiskSpecialist                  │
+│       │                                     │
+│  ComplianceGate ──► Validation             │
+│       │                                     │
+│  Synthesiser ──► Executive briefing         │
+│  ReportGenerator ──► Formatted output       │
+└─────────────────────────────────────────────┘
+        │
+        ▼
+Cosmos DB (briefing storage) + Service Bus (async)
 ```
 
-### 2.2 Runtime Components
-- API Server: FastAPI + Uvicorn
-- Configuration: environment variables and .env file
-- External Integrations: enabled per environment
-- Validation: pytest + e2e demo script
+## Key Features
 
-## 3. Repository Structure
+- **6 Data Source Connectors** — Financial, market, news, HR, operations, and customer data feeds
+- **5 Specialist Analysts** — Financial, market, operations, people, and risk specialists analyze data in parallel
+- **Compliance Gate** — Validates specialist outputs for factual consistency and bias
+- **Report Generator** — Produces structured executive briefings with recommendations
+- **Async Processing** — Background task execution with status polling via `GET /briefings/{id}`
+- **Synthesiser with Prompts** — Dedicated prompt engineering in `prompts.py` for executive-grade output
+- **Cosmos DB** — Briefing persistence with status tracking (pending → processing → completed)
 
-```txt
+## Step-by-Step Flow
+
+### Step 1: Briefing Request
+Executive submits a `BriefingRequest` with topic, scope, and urgency via `POST /briefings`.
+
+### Step 2: Data Collection (Parallel)
+`BriefingPipeline` triggers all 6 data source connectors in parallel to gather financial metrics, market data, news, HR stats, ops metrics, and customer sentiment.
+
+### Step 3: Specialist Analysis (Parallel)
+5 specialists analyze the collected data concurrently. Each extends `BaseSpecialist` and produces domain-specific insights.
+
+### Step 4: Compliance Validation
+`ComplianceGate` validates all specialist outputs against consistency rules.
+
+### Step 5: Synthesis & Report
+`Synthesiser` consolidates outputs into a unified briefing. `ReportGenerator` formats the final deliverable.
+
+### Step 6: Status & Retrieval
+Client polls `GET /briefings/{id}` for status. Completed briefings return the full `BriefingResult`.
+
+## Repository Structure
+
+```
 executive-briefing-system/
-  src/ or orchestrator/
-  tests/
-  infra/
-  requirements.txt
-  demo_e2e.py
+├── orchestrator/
+│   ├── main.py              # FastAPI entry point
+│   ├── pipeline.py           # BriefingPipeline — multi-agent orchestration
+│   └── report_generator.py   # Formatted report generation
+├── data_sources/
+│   ├── financial_connector.py
+│   ├── market_connector.py
+│   ├── news_connector.py
+│   ├── hr_connector.py
+│   ├── ops_connector.py
+│   └── customer_connector.py
+├── specialists/
+│   ├── base_specialist.py    # BaseSpecialist ABC
+│   ├── financial_specialist.py
+│   ├── market_specialist.py
+│   ├── operations_specialist.py
+│   ├── people_specialist.py
+│   └── risk_specialist.py
+├── compliance_gate/
+│   └── agent.py
+├── synthesiser/
+│   ├── agent.py
+│   └── prompts.py
+├── shared/
+│   ├── config.py, models.py, service_bus.py, logging_config.py
+├── tests/
+│   └── test_pipeline.py
+├── infra/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── demo_e2e.py
+├── requirements.txt
+└── .env.example
 ```
 
-## 4. Prerequisites
-
-- Python 3.10+
-- pip 23+
-- Git
-- Optional cloud credentials for enabled connectors
-
-## 5. Local Setup
-
-1. Clone repository
+## Quick Start
 
 ```bash
 git clone https://github.com/maneeshkumar52/executive-briefing-system.git
 cd executive-briefing-system
-```
-
-2. Create virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-3. Install dependencies
-
-```bash
-pip install --upgrade pip
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-4. Configure environment
-
-```bash
-cp .env.example .env 2>/dev/null || true
-```
-
-## 6. Run the Service
-
-```bash
+cp .env.example .env   # Set LOCAL_MODE=true
 uvicorn orchestrator.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Service endpoints:
-- API docs: http://127.0.0.1:8000/docs
-- OpenAPI JSON: http://127.0.0.1:8000/openapi.json
+## Configuration
 
-## 7. Validation and Test Flow
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AZURE_OPENAI_ENDPOINT` | Yes | Azure OpenAI endpoint |
+| `AZURE_OPENAI_DEPLOYMENT` | Yes | Model deployment (gpt-4o) |
+| `LOCAL_MODE` | No | Run without Azure (default: true) |
+| `COSMOS_ENDPOINT` | No | Cosmos DB for briefing storage |
+| `SERVICE_BUS_CONNECTION_STRING` | No | Azure Service Bus for async |
 
-1. Syntax validation
-
-```bash
-python3 -m compileall -q .
-```
-
-2. Unit/integration tests
+## Testing
 
 ```bash
 pytest -q
-```
-
-3. End-to-end demo
-
-```bash
 python demo_e2e.py
 ```
 
-## 8. Troubleshooting
+## License
 
-- Import or module errors:
-  - Ensure .venv is active
-  - Reinstall dependencies
-- Port already in use:
-  - Change --port value
-- Cloud connector failures:
-  - Validate credentials and service endpoints in .env
-
-## 9. Production Readiness Checklist
-
-- [ ] Environment variables externalized
-- [ ] Secrets not committed
-- [ ] Logging and tracing enabled
-- [ ] Test suite green in CI
-- [ ] Health checks configured in deployment
-
-## 10. License
-
-See LICENSE in this repository.
+MIT
